@@ -546,3 +546,6 @@ Unified/
     ├── generate_data.py             # Synthetic customer data generator
     └── generate_watchlist.py        # Watchlist data generator
 ```
+##Disclaimer
+
+This tool is a screening aid, not a replacement for qualified AML compliance officers. All high-risk flags must be reviewed by a licensed compliance professional before action is taken. Synthetic data is used for development and demonstration only.
