@@ -1,0 +1,127 @@
+services:
+
+  # ─── 1. Risk Rating — Python FastAPI ML ──────────────────────────
+  risk-ml:
+    platform: linux/amd64
+    build:
+      context: ./Risk Rating/ml-service
+    container_name: aml-risk-ml
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # ─── 2. Risk Rating — .NET Core API ──────────────────────────────
+  risk-service:
+    build:
+      context: ./Risk Rating/AML-Risk-System/backend
+    container_name: aml-risk-service
+    ports:
+      - "8081:8081"
+    environment:
+      - ASPNETCORE_URLS=http://+:8081
+      - ML_SERVICE_URL=http://risk-ml:8000
+      - ConnectionStrings__DefaultConnection=Host=host.docker.internal;Port=${DB_PORT:-5432};Database=${DB_NAME:-aml_db};Username=${DB_USER:-postgres};Password=${DB_PASSWORD}
+    depends_on:
+      risk-ml:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ─── 3. Screening — Python Flask REST API ────────────────────────
+  screening-service:
+    platform: linux/amd64
+    build:
+      context: ./Screening
+    container_name: aml-screening-service
+    ports:
+      - "8082:8082"
+    environment:
+      - DB_HOST=host.docker.internal
+      - DB_NAME=aml_db
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_PORT=5432
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8082/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ─── 4. Transaction Monitoring — Python IsolationForest ML ───────
+  # platform: linux/amd64 fixes "exec format error" — Docker was pulling a cached
+  # arm64 python image on this amd64 Windows machine, causing the binary to fail.
+  transaction-ml:
+    platform: linux/amd64
+    build:
+      context: ./Transaction Monitoring
+      dockerfile: Dockerfile.python
+    container_name: aml-transaction-ml
+    ports:
+      - "5000:5000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # ─── 5. Transaction Monitoring — Java Spring Boot ────────────────
+  transaction-service:
+    build:
+      context: ./Transaction Monitoring
+    container_name: aml-transaction-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SERVER_PORT=8083
+      - ML_SERVICE_URL=http://transaction-ml:5000
+    depends_on:
+      transaction-ml:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ─── 6. API Gateway — Java Spring Boot ───────────────────────────
+  aml-gateway:
+    build:
+      context: ./aml-gateway
+    container_name: aml-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - AML_SERVICES_RISK_URL=http://risk-service:8081
+      - AML_SERVICES_SCREENING_URL=http://screening-service:8082
+      - AML_SERVICES_TRANSACTIONS_URL=http://transaction-service:8083
+    depends_on:
+      screening-service:
+        condition: service_healthy
+      risk-service:
+        condition: service_started
+      transaction-service:
+        condition: service_started
+
+  # ─── 7. Unified React Frontend ───────────────────────────────────
+  aml-frontend:
+    build:
+      context: ./aml-frontend
+    container_name: aml-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_GATEWAY_URL=http://localhost:8080
+      - VITE_RISK_URL=http://localhost:8081
+      - VITE_SCREENING_URL=http://localhost:8082
+      - VITE_TRANSACTION_URL=http://localhost:8083
+    depends_on:
+      - aml-gateway
