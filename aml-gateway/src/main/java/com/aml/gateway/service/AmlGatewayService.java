@@ -54,7 +54,7 @@ public class AmlGatewayService {
 
         Map<String, Object> status = new LinkedHashMap<>();
         status.put("gateway",      "UP");
-        status.put("riskService",       ping(riskUrl      + "/health"));
+        status.put("riskService",       ping(riskUrl      + "/api/customer"));
         status.put("screeningService",  ping(screeningUrl + "/health"));
         status.put("transactionService",ping(transactionsUrl + "/"));
         return status;

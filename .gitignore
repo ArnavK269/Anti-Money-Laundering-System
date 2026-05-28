@@ -11,9 +11,6 @@
 *.cer
 *.crt
 *.csv
-# ─────────────────────────────────────────────────────────────────
-# AI TOOLING — Claude Code session files
-# ─────────────────────────────────────────────────────────────────
 .claude/
 CLAUDE.md
 
@@ -60,6 +57,7 @@ obj/
 project.lock.json
 artifacts/
 **/Properties/launchSettings.json
+.properties
 
 # ─────────────────────────────────────────────────────────────────
 # NODE / REACT / VITE

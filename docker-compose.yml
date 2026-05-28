@@ -85,6 +85,9 @@ services:
     environment:
       - SERVER_PORT=8083
       - ML_SERVICE_URL=http://transaction-ml:5000
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:${DB_PORT:-5432}/${DB_NAME:-aml_db}
+      - SPRING_DATASOURCE_USERNAME=${DB_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
     depends_on:
       transaction-ml:
         condition: service_healthy

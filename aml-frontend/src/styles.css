@@ -223,15 +223,55 @@ tbody td { padding: 11px 16px; vertical-align: middle; }
 
 /* ── Misc ── */
 .err-bar { padding: 12px 16px; border-radius: 10px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); color: #f87171; margin-bottom: 16px; font-size: 13px; }
-.loader-wrap { display: flex; align-items: center; gap: 12px; padding: 24px 0; opacity: .6; font-size: 13px; }
-.spinner { width: 20px; height: 20px; border: 2px solid rgba(99,102,241,.3); border-top-color: #6366f1; border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+
+/* ── Skeleton loaders ── */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+.skel {
+  border-radius: 6px;
+  background-size: 600px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.dark  .skel { background-image: linear-gradient(90deg, rgba(255,255,255,.04) 25%, rgba(255,255,255,.09) 50%, rgba(255,255,255,.04) 75%); }
+.light .skel { background-image: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%); }
+
+/* table skeleton */
+.skel-table { padding: 8px 0; }
+.skel-row { display: flex; align-items: center; gap: 24px; padding: 13px 16px; border-bottom: 1px solid rgba(128,128,128,.07); }
+.skel-row .skel { height: 12px; }
+
+/* stat cards skeleton */
+.skel-cards { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; margin-bottom: 20px; }
+.skel-card { padding: 18px 20px; border-radius: 14px; }
+.dark  .skel-card { background: rgba(255,255,255,.04); }
+.light .skel-card { background: white; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+.skel-val  { height: 30px; width: 60%; margin-bottom: 10px; }
+.skel-lbl  { height: 12px; width: 80%; margin-bottom: 6px; }
+.skel-sub  { height: 10px; width: 50%; }
+
+/* profile skeleton */
+.skel-profile-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 20px; }
+.skel-profile-card { border-radius: 16px; padding: 24px; }
+.dark  .skel-profile-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); }
+.light .skel-profile-card { background: white; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+.skel-title { height: 12px; width: 40%; margin-bottom: 16px; }
+.skel-score { height: 52px; width: 55%; margin-bottom: 20px; border-radius: 8px; }
+.skel-line  { height: 11px; width: 100%; margin-bottom: 10px; }
+.skel-short { width: 65%; }
+
+/* screening single-card skeleton */
+.skel-screening { border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+.dark  .skel-screening { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); }
+.light .skel-screening { background: white; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
 .raw-json { margin-top: 16px; }
 .raw-json summary { cursor: pointer; font-size: 12px; opacity: .5; padding: 8px 0; }
 .raw-json pre { margin-top: 8px; background: #0f172a; color: #dbeafe; border-radius: 10px; padding: 16px; font-size: 12px; overflow: auto; max-height: 400px; }
 .footer { text-align: center; font-size: 11px; opacity: .25; padding: 24px 36px; }
 
 /* ── Animations ── */
-@keyframes spin  { to { transform: rotate(360deg); } }
+@keyframes spin  { to { transform: rotate(360deg); } }  /* used by .spin-sm search indicator */
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 
 /* ── Responsive ── */

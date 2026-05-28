@@ -46,11 +46,56 @@ function StatCard({ label, value, accent, sub }) {
   );
 }
 
-function Loader({ text }) {
+function Loader({ variant = "table" }) {
+  if (variant === "cards") {
+    return (
+      <div className="skel-cards">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="skel-card">
+            <div className="skel skel-val" />
+            <div className="skel skel-lbl" />
+            <div className="skel skel-sub" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (variant === "screening") {
+    return (
+      <div className="skel-screening">
+        <div className="skel skel-title" />
+        <div className="skel skel-score" />
+        <div className="skel skel-line" />
+        <div className="skel skel-line" />
+        <div className="skel skel-line skel-short" />
+      </div>
+    );
+  }
+  if (variant === "profile") {
+    return (
+      <div className="skel-profile-grid">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="skel-profile-card">
+            <div className="skel skel-title" />
+            <div className="skel skel-score" />
+            <div className="skel skel-line" />
+            <div className="skel skel-line" />
+            <div className="skel skel-line skel-short" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  // default: table rows
   return (
-    <div className="loader-wrap">
-      <div className="spinner" />
-      <span>{text}</span>
+    <div className="skel-table">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="skel-row">
+          {Array.from({ length: 7 }).map((_, j) => (
+            <div key={j} className="skel" style={{ width: `${[90,60,110,60,70,80,50][j]}px` }} />
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
@@ -119,9 +164,10 @@ function ProfileTab() {
       </form>
 
       {error   && <div className="err-bar">{error}</div>}
-      {loading && <Loader text={`Calling Gateway → Risk :8081 + Screening :8082 + Transactions :8083…`} />}
+      {loading && <Loader variant="profile" />}
 
       {profile && !loading && (
+
         <>
           {/* Customer name banner */}
           <div className="profile-name-hdr">
@@ -212,7 +258,7 @@ function TransactionsTab() {
   const [dropdown,     setDropdown]     = useState(false);
   const [error,        setError]        = useState("");
   const [manualF,      setManualF]      = useState({
-    caseId: "", customerId: "", clientName: "", severity: "", rules: ""
+    caseId: "", customerId: "", clientName: "", severity: ""
   });
 
   useEffect(() => {
@@ -232,6 +278,12 @@ function TransactionsTab() {
 
   const runAI = useCallback(async () => {
     if (!search.trim()) { setFiltered(alerts); return; }
+    if (!alerts.length) return;
+    // Optimistic plain-text filter first so results appear immediately
+    const lc = search.toLowerCase();
+    setFiltered(alerts.filter(a =>
+      [a.caseId, a.customerId, a.clientName, a.severity].join(" ").toLowerCase().includes(lc)
+    ));
     setLoadingAI(true);
     try {
       const r = await fetch(`${TRANSACTION_URL}/ai-search`, {
@@ -239,19 +291,18 @@ function TransactionsTab() {
         body: JSON.stringify({ message: search }),
       });
       const p = await r.json();
-      setFiltered(alerts.filter(a => {
-        if (p.caseId     && !a.caseId?.toLowerCase().includes(p.caseId.toLowerCase()))     return false;
-        if (p.customerId && a.customerId?.toString() !== p.customerId?.toString())          return false;
-        if (p.severity   && a.severity !== p.severity)                                      return false;
-        if (p.rules?.length && !p.rules.some(r => a.ruleHits?.includes(r)))                return false;
-        if (p.name       && !a.clientName?.toLowerCase().includes(p.name.toLowerCase()))   return false;
-        return true;
-      }));
+      const hasFilters = p.caseId || p.customerId || p.severity || p.name || p.rules?.length;
+      if (hasFilters) {
+        setFiltered(alerts.filter(a => {
+          if (p.caseId     && !a.caseId?.toLowerCase().includes(p.caseId.toLowerCase()))   return false;
+          if (p.customerId && a.customerId?.toString() !== p.customerId?.toString())        return false;
+          if (p.severity   && a.severity !== p.severity)                                    return false;
+          if (p.name       && !a.clientName?.toLowerCase().includes(p.name.toLowerCase())) return false;
+          return true;
+        }));
+      }
     } catch {
-      const lc = search.toLowerCase();
-      setFiltered(alerts.filter(a =>
-        [a.caseId, a.customerId, a.clientName, a.severity, ...(a.ruleHits||[])].join(" ").toLowerCase().includes(lc)
-      ));
+      // plain-text filter already applied above — nothing to do
     } finally { setLoadingAI(false); }
   }, [search, alerts]);
 
@@ -269,7 +320,6 @@ function TransactionsTab() {
       if (f.customerId && !a.customerId?.toString().includes(f.customerId))               return false;
       if (f.clientName && !a.clientName?.toLowerCase().includes(f.clientName.toLowerCase())) return false;
       if (f.severity   && !a.severity?.toLowerCase().includes(f.severity.toLowerCase()))  return false;
-      if (f.rules      && !(a.ruleHits||[]).join(" ").toLowerCase().includes(f.rules.toLowerCase())) return false;
       return true;
     }));
   }, [manualF, alerts, searchMode]);
@@ -295,8 +345,8 @@ function TransactionsTab() {
     scored: alerts.filter(a => a.anomalyScore > 0).length,
   }), [alerts]);
 
-  const switchMode = m => { setSearchMode(m); setSearch(""); setManualF({caseId:"",customerId:"",clientName:"",severity:"",rules:""}); setFiltered(alerts); };
-  const uniqueVals = f => [...new Set(alerts.map(a => f === "rules" ? (a.ruleHits||[]).join(", ") : a[f]).filter(Boolean))];
+  const switchMode = m => { setSearchMode(m); setSearch(""); setManualF({caseId:"",customerId:"",clientName:"",severity:""}); setFiltered(alerts); };
+  const uniqueVals = f => [...new Set(alerts.map(a => a[f]).filter(Boolean))];
 
   return (
     <div className="tab-body">
@@ -349,7 +399,7 @@ function TransactionsTab() {
       )}
 
       {error      && <div className="err-bar">{error}</div>}
-      {loadingData && <Loader text="Loading alerts from Java Transaction Service…" />}
+      {loadingData && <Loader variant="table" />}
 
       {!loadingData && (
         <div className="tbl-wrap">
@@ -482,7 +532,7 @@ function RiskRatingTab() {
       </form>
 
       {error   && <div className="err-bar">{error}</div>}
-      {loading && <Loader text="Calling .NET Risk Service → Python ML…" />}
+      {loading && <Loader variant="cards" />}
 
       {result && !loading && (
         <div className="result-card">
@@ -500,7 +550,7 @@ function RiskRatingTab() {
         </div>
       )}
 
-      {loadingAll && <Loader text="Loading customers from .NET Risk Service…" />}
+      {loadingAll && <Loader variant="table" />}
 
       {!loadingAll && (
         <div className="tbl-wrap" style={{ marginTop: 24 }}>
@@ -673,7 +723,7 @@ function AnalyticsTab() {
       </div>
 
       {error   && <div className="err-bar">{error}</div>}
-      {loading && <Loader text="Fetching data from all services…" />}
+      {loading && <Loader variant="cards" />}
 
       {!loading && (
         <>
@@ -832,13 +882,6 @@ function AnalyticsTab() {
 
             <Panel title="Top Rule Hits"
               info="Pie chart of the most frequently triggered AML detection rules across all monitored customers. Each slice represents how often a specific rule contributed to an alert. Dominant rules reveal the most common suspicious patterns in the dataset."
-              legend={[
-                { color: CHART_COLORS.palette[0], label: "LARGE_TRANSACTION_VOLUME — total exceeds ₹3Cr" },
-                { color: CHART_COLORS.palette[1], label: "MULTIPLE_HIGH_VALUE_TRANSACTIONS — 2+ txns over ₹45L" },
-                { color: CHART_COLORS.palette[2], label: "STRUCTURING_PATTERN — 2+ txns just below ₹10L threshold" },
-                { color: CHART_COLORS.palette[3], label: "RAPID_MOVEMENT — burst activity across multiple days" },
-                { color: CHART_COLORS.palette[4], label: "TRADE_TRANSACTION_MISMATCH — trades with no banking records" },
-              ]}
             >
               {rulePieData.length === 0
                 ? <div style={{ padding: "60px 0", textAlign: "center", opacity: 0.4, fontSize: 13 }}>No rule data available</div>
@@ -867,7 +910,6 @@ function AnalyticsTab() {
                           );
                         }}
                       />
-                      <Legend formatter={v => v.length > 20 ? v.slice(0, 20) + "…" : v} />
                     </PieChart>
                   </ResponsiveContainer>
                 )
@@ -938,7 +980,7 @@ function ScreeningTab() {
       </form>
 
       {error   && <div className="err-bar">{error}</div>}
-      {loading && <Loader text="Screening against watchlist…" />}
+      {loading && <Loader variant="screening" />}
 
       {result && !loading && (
         <div className={`screen-result ${result.match ? "screen-match" : "screen-clear"}`}>
